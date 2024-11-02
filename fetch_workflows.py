@@ -1,10 +1,17 @@
 import os
 import requests
 import json
-from pprint import pprint
+from datetime import datetime
+
 
 GH_PAT = os.environ["GH_PAT"]
 OWNER = "ktulu2602"
+
+REPOS = [
+    "dashboard-test-repo-01",
+    "dashboard-test-repo-02"
+]
+
 
 HEADERS = {
     "Authorization": f"Bearer {GH_PAT}",
@@ -18,6 +25,22 @@ def write_workflow_runs_to_file(workflow_runs: list) -> None:
 
     with open("workflow_runs_results.json", "w") as json_file:
         json.dump(workflow_runs_dict , json_file, indent=2)
+
+def calculate_run_duration(start: str, end: str) -> str:
+    start_time = datetime.strptime(start, '%Y-%m-%dT%H:%M:%SZ')
+    end_time = datetime.strptime(end, '%Y-%m-%dT%H:%M:%SZ')
+
+    duration = end_time - start_time
+
+    # Get the duration in seconds
+    duration_in_seconds = int(duration.total_seconds())
+
+    # Convert seconds to HH:MM:SS format
+    hours, remainder = divmod(duration_in_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    duration_formatted = f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    return duration_formatted
 
 def get_workflows(repo_name: str, per_page: str=100):
     """Get all workflows for a GitHub repository, handling pagination."""
@@ -55,7 +78,9 @@ def get_latest_workflow_run_status(repo_name, workflow_id):
             "status": wf_runs[0]["status"],
             "url": wf_runs[0]["url"],
             "name": wf_runs[0]["name"],
-            "timestamp": wf_runs[0]["updated_at"]
+            "timestamp_a": wf_runs[0]["run_started_at"],
+            "timestamp_z": wf_runs[0]["updated_at"],
+            "run_duration": calculate_run_duration(start=wf_runs[0]["run_started_at"], end=wf_runs[0]["updated_at"])
         }
 
     return {}
@@ -76,8 +101,6 @@ def get_workflows_and_statuses(repos):
     # pprint(all_workflows)
     return all_workflows
 
-repos = ["dashboard-test-repo-01", "dashboard-test-repo-02"]
-
-workflows_and_statuses = get_workflows_and_statuses(repos)
+workflows_and_statuses = get_workflows_and_statuses(REPOS)
 
 write_workflow_runs_to_file(workflow_runs=workflows_and_statuses)
